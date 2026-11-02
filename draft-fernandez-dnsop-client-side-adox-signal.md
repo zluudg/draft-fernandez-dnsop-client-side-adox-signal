@@ -42,7 +42,7 @@ informative:
 This document describes an EDNS0 option that a client can attach to a
 DNS query to signal to a recursive resolver that it SHOULD prefer
 encrypted transports while resolving the query. The option can also
-be used on the return path by the recursor to signal whether encryption
+be used on the return path by the resolver to signal whether encryption
 was achievable or not.
 
 
@@ -75,13 +75,11 @@ indication to the client about what level of privacy was achieved for
 a particular query.
 
 # Terminology
-Client: A stub resolver, typically part of an end-user's operating system
-    or web browser.
+Client: A stub resolver as defined in {{!RFC9499}} or some other
+    software, such as a browser, is close to the end-user and sends
+    recursice DNS queries.
 
-Recursive Resolver/Recursor: A resolver that resolves a query on behalf
-    of a client. This is done by first querying the root of the DNS tree
-    and, if necessary, following the chain of delegations with more
-    queries until an authoritative server is found.
+Resolver: As defined in {{!RFC9499}}.
 
 ADoX: Authoritative DNS-over-X, where X implies some arbitrary encrypted
     transport protocol.
@@ -97,7 +95,7 @@ The EDNS0 PRIVACY option is structured as follows:
      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
  2:  |                           OPTION-LENGTH                       |
      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
- 4:  |           PRIVACY             |            VALIDATED          |
+ 4:  |          PRIVACY REQUEST      |        PRIVACY_RESPONSE       |
      +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 ~~~
 
@@ -110,31 +108,33 @@ OPTION-LENGTH: The option length MUST have a value of 2 if this option
     is present. Consumers of this signal SHOULD NOT act on
     malformed options.
 
-PRIVACY: For queries, this value encodes the client's desired level of
-    privacy. For responses, this value encodes the level of privacy
-    that the resolver was able to achieve. Currently defined values are
-    listed in {{privacy-values}}.
+PRIVACY REQUEST: This value encodes the client's desired level of privacy.
+    Currently defined values are listed in {{privacy-req-values}}.
+    In a DNS response, the recipient MUST ignore this field and
+    the sender SHOULD set it to 0.
 
-VALIDATED: For queries, this field is unused and MUST be set to 0.
-    For responses, it SHOULD be set to 1 if the recursor successfully
-    validated the certificates it encountered during the resolution
-    process. Else, it MUST be set to 0. Validation can be done via
-    mechanisms such as DANE {{!RFC6698}} or the WebPKI. The VALIDATED
-    field SHOULD only be set if the PRIVACY field is CACHED or
-    ENCRYPTED.
+PRIVACY RESPONSE: This value encodes the level of privacy that the resolver
+    was able to achieve. Currently defined values are listed in
+    {{privacy-rsp-values}}. In a DNS query, the recipient MUST ignore
+    this field and the sender SHOULD set it to 0.
 
-# Privacy Values {#privacy-values}
+# PRIVACY REQUEST Values {#privacy-req-values}
+
+| Value | Context  | Mnemonic                  |
+|-------|----------|---------------------------|
+| 0     | Query    | NONE                      |
+| 1     | Query    | OPPORTUNISTIC             |
+| 2     | Query    | OPPORTUNISTIC-NO-FALLBACK |
+
+# PRIVACY RESPONSE Values {#privacy-rsp-values}
 
 | Value | Context  | Mnemonic      |
 |-------|----------|---------------|
-| 0     | Query    | NONE          |
 | 0     | Response | CLEARTEXT     |
-| 1     | Query    | OPPORTUNISTIC |
 | 1     | Response | ENCRYPTED     |
-| 2     | Query    | STRICT        |
 | 2     | Response | CACHED        |
 
-## Interpretations of Privacy Values in a query context
+## Interpretations of Privacy Request Values
 
 ### NONE
 Same effect as having no client signal at all. No privacy requested by
@@ -145,22 +145,23 @@ The client is requesting a preference for resolving the query using
 encrypted transports. However, fallback to unencrypted transport is
 acceptable.
 
-### STRICT
-The client is requesting a strict preference for resolving the query
-using encrypted transports. Leaking information about the query over
-unencrypted transports is not acceptable.
+### OPPORTUNISTIC-NO-FALLBACK
+The client is requesting a preference for resolving the query using
+encrypted transports. Fallback to unencrypted transport is not
+acceptable.
 
-## Interpretations of Privacy Values in a response context
+## Interpretations of Privacy Response Values
 
 ### CLEARTEXT
-The answer was fetched over an unencrypted connection.
+The resolver had to send at least one unencrypted query during
+resolution.
 
 ### ENCRYPTED
-The answer was fetched only over encrypted transports.
+The resolver only sent encrypted queries or used cached data during
+resolution.
 
 ### CACHED
-The answer was fetched from the resolver's cache and no queries had to
-be sent out.
+The final answer was fetched directly from the resolver's cache.
 
 # Protocol Description
 A client adds the PRIVACY EDNS0 option to a recursive query before
@@ -171,20 +172,20 @@ client is trying to achieve.
 Given that the client sent its query using an encrypted transport, the
 recursive resolver will try to honor the PRIVACY option. If it is NONE,
 it means the client does not care about what transports are used to
-resolve the query and the recursor may resolve it in any way deemed
-suitable. If the option is OPPORTUNISTIC, the recursor MUST attempt
+resolve the query and the resolver may resolve it in any way deemed
+suitable. If the option is OPPORTUNISTIC, the resolver MUST attempt
 encrypted transport to all nameserver it knows support encryption while
 traversing the delegation chain. However, the
-recursor is allowed to fall back to an unencrypted transport after a
-failed attempt. If the option is STRICT the recursor MUST NOT perform
+resolver is allowed to fall back to an unencrypted transport after a
+failed attempt. If the option is OPPORTUNISTIC-NO-FALLBACK the resolver MUST NOT perform
 such a fallback at any point during the resolution process. Using
 contents from the cache is always okay as this does not leak any
 information about the client's query.
 
-## Setting a Response PRIVACY Value
+## Setting a PRIVACY RESPONSE Value
 A recursive resolver SHOULD only set an EDNS0 PRIVACY option if the
 option was present in the query. If the data was readily available in
-the recursor's cache, it sets a value of CACHED. If at any point
+the resolver's cache, it sets a value of CACHED. If at any point
 during the resolution process, a query was sent unencrypted (either
 due to falling back or to the client query having a value of NONE), the
 resolver MUST set the value to CLEARTEXT. If the resolver solely used
@@ -192,27 +193,27 @@ encrypted transports and data from its cache to retrieve the answer, it
 responds with a value of ENCRYPTED. What transport cached data arrived
 over does not matter in this case.
 
-## Failure to Honor a STRICT Request
+## Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
 If the recursive resolver cannot obtain the answer without sending a
-query over an unencrypted transport, and the client requested STRICT,
-the resolver MUST NOT send that query. It MUST instead respond with
+query over an unencrypted transport, and the client requested OPPORTUNISTIC-NO-FALLBACK,
+the resolver MUST NOT send the query that could not be sent encrypted. It MUST instead respond with
 RCODE SERVFAIL and SHOULD include an Extended DNS Error {{!RFC8914}}
 with INFO-CODE TBD2 ("Encrypted Transport Unavailable"). The response
 MUST include the PRIVACY option with the value ENCRYPTED, since no
 information about the query was sent in cleartext.
 
-It is expected that during early deployment, most STRICT requests will
+It is expected that during early deployment, most OPPORTUNISTIC-NO-FALLBACK requests will
 fail. However, for debugging purposes, such a signal is valuable for
 testing that recursive resolvers actually honor the encryption request.
-Also, as the technology matures, the STRICT option might eventually
+Also, as the technology matures, the OPPORTUNISTIC-NO-FALLBACK option might eventually
 become viable.
 
 # Relation to QNAME minimisation
 QNAME minimisation {{!RFC9156}} is another privacy-enhancement for
 authoritative DNS that recursive resolvers can implement. It SHOULD be
 considered orthogonal to what is proposed in this draft. That is, the
-value that the recursor sets for the PRIVACY option SHOULD NOT be
-affected in any way by whether the recursor employs QNAME minimisation
+value that the resolver sets for the PRIVACY option SHOULD NOT be
+affected in any way by whether the resolver employs QNAME minimisation
 or not. QNAME minimization does not give as good privacy as encryption
 if there are more than two or three delegations. On the other hand,
 QNAME minimization avoids leaking information to authoritative servers,
@@ -258,7 +259,7 @@ Maturity:
 
   Coverage:
   : Recursive resolver: parsing the client signal, honoring
-    OPPORTUNISTIC and STRICT, setting the response PRIVACY value.
+    OPPORTUNISTIC requests, setting the response PRIVACY value.
     Stub/client: Setting the PRIVACY value and interpreting the PRIVACY
     value in the response.
 
@@ -313,6 +314,14 @@ assigned a value of TBD1 "DNS EDNS0 Option Codes (OPT)" registry
 | Value | Name                     | Status   | Reference            |
 |-------|--------------------------|----------|----------------------|
 | TBD1  | client-privacy-signal  | Standard | ( This document )    |
+
+This document also defines a new  INFO-CODE,
+entitled "Encrypted Transport Unavailable", assigned a value of TBD2
+in the "Extended DNS Error Codes" registry.
+
+| Value | Name                     | Status   | Reference            |
+|-------|--------------------------|----------|----------------------|
+| TBD2  | encrypted-transport-unavailable  | Standard | ( This document )    |
 
 --- back
 
