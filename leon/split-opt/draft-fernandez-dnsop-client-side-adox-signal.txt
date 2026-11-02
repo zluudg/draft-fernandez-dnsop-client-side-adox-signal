@@ -80,13 +80,16 @@ Table of Contents
        5.1.1.  NONE
        5.1.2.  OPPORTUNISTIC
        5.1.3.  OPPORTUNISTIC-NO-FALLBACK
+       5.1.4.  STRICT
      5.2.  Interpretations of Privacy Response Values
        5.2.1.  CLEARTEXT
        5.2.2.  ENCRYPTED
        5.2.3.  CACHED
+       5.2.4.  AUTHENTICATED
    6.  Protocol Description
      6.1.  Setting a PRIVACY RESPONSE Value
-     6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
+     6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK or STRICT
+           Request
    7.  Relation to QNAME minimisation
    8.  Conventions and Definitions
    9.  Implementation Status
@@ -173,31 +176,35 @@ Table of Contents
 
 4.  PRIVACY REQUEST Values
 
-              +=======+=========+===========================+
-              | Value | Context | Mnemonic                  |
-              +=======+=========+===========================+
-              | 0     | Query   | NONE                      |
-              +-------+---------+---------------------------+
-              | 1     | Query   | OPPORTUNISTIC             |
-              +-------+---------+---------------------------+
-              | 2     | Query   | OPPORTUNISTIC-NO-FALLBACK |
-              +-------+---------+---------------------------+
+                   +=======+===========================+
+                   | Value | Mnemonic                  |
+                   +=======+===========================+
+                   | 0     | NONE                      |
+                   +-------+---------------------------+
+                   | 1     | OPPORTUNISTIC             |
+                   +-------+---------------------------+
+                   | 2     | OPPORTUNISTIC-NO-FALLBACK |
+                   +-------+---------------------------+
+                   | 3     | STRICT                    |
+                   +-------+---------------------------+
 
                                   Table 1
 
 5.  PRIVACY RESPONSE Values
 
-                     +=======+==========+===========+
-                     | Value | Context  | Mnemonic  |
-                     +=======+==========+===========+
-                     | 0     | Response | CLEARTEXT |
-                     +-------+----------+-----------+
-                     | 1     | Response | ENCRYPTED |
-                     +-------+----------+-----------+
-                     | 2     | Response | CACHED    |
-                     +-------+----------+-----------+
+                         +=======+===============+
+                         | Value | Mnemonic      |
+                         +=======+===============+
+                         | 0     | CLEARTEXT     |
+                         +-------+---------------+
+                         | 1     | ENCRYPTED     |
+                         +-------+---------------+
+                         | 2     | CACHED        |
+                         +-------+---------------+
+                         | 3     | AUTHENTICATED |
+                         +-------+---------------+
 
-                                 Table 2
+                                  Table 2
 
 5.1.  Interpretations of Privacy Request Values
 
@@ -218,6 +225,11 @@ Table of Contents
    encrypted transports.  Fallback to unencrypted transport is not
    acceptable.
 
+5.1.4.  STRICT
+
+   The client is requesting a preference for resolving the query using
+   authenticated encrypted transport.
+
 5.2.  Interpretations of Privacy Response Values
 
 5.2.1.  CLEARTEXT
@@ -233,6 +245,13 @@ Table of Contents
 5.2.3.  CACHED
 
    The final answer was fetched directly from the resolver's cache.
+
+5.2.4.  AUTHENTICATED
+
+   The resolver only sent encrypted queries or used cached data during
+   resolution.  Moreover, encrypted connections were authenticated, for
+   example via a TLSA record, and cached data was only used if it was
+   received via an authenticated transport.
 
 6.  Protocol Description
 
@@ -252,7 +271,11 @@ Table of Contents
    failed attempt.  If the option is OPPORTUNISTIC-NO-FALLBACK the
    resolver MUST NOT perform such a fallback at any point during the
    resolution process.  Using contents from the cache is always okay as
-   this does not leak any information about the client's query.
+   this does not leak any information about the client's query.  If the
+   STRICT option is set, the resolver MUST authenticate all encrypted
+   connections it makes during resolution.  If cached data is to be used
+   during resolution, it MUST have been received over an authenticated
+   encrypted connection.
 
 6.1.  Setting a PRIVACY RESPONSE Value
 
@@ -264,9 +287,12 @@ Table of Contents
    the resolver MUST set the value to CLEARTEXT.  If the resolver solely
    used encrypted transports and data from its cache to retrieve the
    answer, it responds with a value of ENCRYPTED.  What transport cached
-   data arrived over does not matter in this case.
+   data arrived over does not matter in this case.  If the resolver was
+   able to resolve the query using only data that arrived over
+   authenticated transports (either from the cache or from a response),
+   it response with a value of AUTHENTICATED
 
-6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
+6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK or STRICT Request
 
    If the recursive resolver cannot obtain the answer without sending a
    query over an unencrypted transport, and the client requested
@@ -275,13 +301,16 @@ Table of Contents
    SERVFAIL and SHOULD include an Extended DNS Error [RFC8914] with
    INFO-CODE TBD2 ("Encrypted Transport Unavailable").  The response
    MUST include the PRIVACY option with the value ENCRYPTED, since no
-   information about the query was sent in cleartext.
+   information about the query was sent in cleartext.  Failure to honor
+   a STRICT request works similarly, the resolver sets an INFO-CODE of
+   TBD2 and an AUTHENTICATED value for the PRIVACY RESPONSE field.
 
    It is expected that during early deployment, most OPPORTUNISTIC-NO-
-   FALLBACK requests will fail.  However, for debugging purposes, such a
-   signal is valuable for testing that recursive resolvers actually
-   honor the encryption request.  Also, as the technology matures, the
-   OPPORTUNISTIC-NO-FALLBACK option might eventually become viable.
+   FALLBACK and STRICT requests will fail.  However, for debugging
+   purposes, such a signal is valuable for testing that recursive
+   resolvers actually honor the encryption request.  Also, as the
+   technology matures, the OPPORTUNISTIC-NO-FALLBACK and STRICT options
+   might eventually become viable.
 
 7.  Relation to QNAME minimisation
 
@@ -461,11 +490,11 @@ Table of Contents
 
    [I-D.johani-dnsop-transport-signaling]
               Stenstam, J., Fernandez, L., Bergström, E., Homburg, P.,
-              and S. Dickinson, "Authoritative DNS Transport Signaling",
-              Work in Progress, Internet-Draft, draft-johani-dnsop-
-              transport-signaling-02, 20 October 2025,
-              <https://datatracker.ietf.org/doc/html/draft-johani-dnsop-
-              transport-signaling-02>.
+              and S. Dickinson, "Opportunistic Operator based SVCB
+              transport signaling (OOTS)", Work in Progress, Internet-
+              Draft, draft-johani-dnsop-transport-signaling-03, 2
+              November 2026, <https://datatracker.ietf.org/doc/html/
+              draft-johani-dnsop-transport-signaling-03>.
 
    [I-D.wesplaap-deleg-transport]
               April, T., Špaček, P., Weber, R., and Lawrence,
