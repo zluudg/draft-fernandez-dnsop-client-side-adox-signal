@@ -1182,6 +1182,9 @@ was achievable or not.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1.2.3">
                     <p id="section-toc.1-1.5.2.1.2.3.1"><a href="#section-5.1.3" class="auto internal xref">5.1.3</a>.  <a href="#name-opportunistic-no-fallback" class="internal xref">OPPORTUNISTIC-NO-FALLBACK</a></p>
 </li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1.2.4">
+                    <p id="section-toc.1-1.5.2.1.2.4.1"><a href="#section-5.1.4" class="auto internal xref">5.1.4</a>.  <a href="#name-strict" class="internal xref">STRICT</a></p>
+</li>
                 </ul>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2">
@@ -1196,6 +1199,9 @@ was achievable or not.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.3">
                     <p id="section-toc.1-1.5.2.2.2.3.1"><a href="#section-5.2.3" class="auto internal xref">5.2.3</a>.  <a href="#name-cached" class="internal xref">CACHED</a></p>
 </li>
+                  <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.2.2.4">
+                    <p id="section-toc.1-1.5.2.2.2.4.1"><a href="#section-5.2.4" class="auto internal xref">5.2.4</a>.  <a href="#name-authenticated" class="internal xref">AUTHENTICATED</a></p>
+</li>
                 </ul>
 </li>
             </ul>
@@ -1207,7 +1213,7 @@ was achievable or not.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                 <p id="section-toc.1-1.6.2.1.1"><a href="#section-6.1" class="auto internal xref">6.1</a>.  <a href="#name-setting-a-privacy-response-" class="internal xref">Setting a PRIVACY RESPONSE Value</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.2">
-                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-failure-to-honor-a-opportun" class="internal xref">Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request</a></p>
+                <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-failure-to-honor-a-opportun" class="internal xref">Failure to Honor a OPPORTUNISTIC-NO-FALLBACK or STRICT Request</a></p>
 </li>
             </ul>
 </li>
@@ -1342,25 +1348,25 @@ a particular query.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <thead>
           <tr>
             <th class="text-left" rowspan="1" colspan="1">Value</th>
-            <th class="text-left" rowspan="1" colspan="1">Context</th>
             <th class="text-left" rowspan="1" colspan="1">Mnemonic</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">0</td>
-            <td class="text-left" rowspan="1" colspan="1">Query</td>
             <td class="text-left" rowspan="1" colspan="1">NONE</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">1</td>
-            <td class="text-left" rowspan="1" colspan="1">Query</td>
             <td class="text-left" rowspan="1" colspan="1">OPPORTUNISTIC</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">2</td>
-            <td class="text-left" rowspan="1" colspan="1">Query</td>
             <td class="text-left" rowspan="1" colspan="1">OPPORTUNISTIC-NO-FALLBACK</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">3</td>
+            <td class="text-left" rowspan="1" colspan="1">STRICT</td>
           </tr>
         </tbody>
       </table>
@@ -1376,25 +1382,25 @@ a particular query.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <thead>
           <tr>
             <th class="text-left" rowspan="1" colspan="1">Value</th>
-            <th class="text-left" rowspan="1" colspan="1">Context</th>
             <th class="text-left" rowspan="1" colspan="1">Mnemonic</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">0</td>
-            <td class="text-left" rowspan="1" colspan="1">Response</td>
             <td class="text-left" rowspan="1" colspan="1">CLEARTEXT</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">1</td>
-            <td class="text-left" rowspan="1" colspan="1">Response</td>
             <td class="text-left" rowspan="1" colspan="1">ENCRYPTED</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">2</td>
-            <td class="text-left" rowspan="1" colspan="1">Response</td>
             <td class="text-left" rowspan="1" colspan="1">CACHED</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">3</td>
+            <td class="text-left" rowspan="1" colspan="1">AUTHENTICATED</td>
           </tr>
         </tbody>
       </table>
@@ -1432,6 +1438,15 @@ encrypted transports. Fallback to unencrypted transport is not
 acceptable.<a href="#section-5.1.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="strict">
+<section id="section-5.1.4">
+          <h4 id="name-strict">
+<a href="#section-5.1.4" class="section-number selfRef">5.1.4. </a><a href="#name-strict" class="section-name selfRef">STRICT</a>
+          </h4>
+<p id="section-5.1.4-1">The client is requesting a preference for resolving the query using
+authenticated encrypted transport.<a href="#section-5.1.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="interpretations-of-privacy-response-values">
@@ -1465,6 +1480,17 @@ resolution.<a href="#section-5.2.2-1" class="pilcrow">¶</a></p>
 <p id="section-5.2.3-1">The final answer was fetched directly from the resolver's cache.<a href="#section-5.2.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="authenticated">
+<section id="section-5.2.4">
+          <h4 id="name-authenticated">
+<a href="#section-5.2.4" class="section-number selfRef">5.2.4. </a><a href="#name-authenticated" class="section-name selfRef">AUTHENTICATED</a>
+          </h4>
+<p id="section-5.2.4-1">The resolver only sent encrypted queries or used cached data during
+resolution. Moreover, encrypted connections were authenticated, for
+example via a TLSA record, and cached data was only used if it was
+received via an authenticated transport.<a href="#section-5.2.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 </section>
@@ -1489,7 +1515,10 @@ resolver is allowed to fall back to an unencrypted transport after a
 failed attempt. If the option is OPPORTUNISTIC-NO-FALLBACK the resolver <span class="bcp14">MUST NOT</span> perform
 such a fallback at any point during the resolution process. Using
 contents from the cache is always okay as this does not leak any
-information about the client's query.<a href="#section-6-2" class="pilcrow">¶</a></p>
+information about the client's query. If the STRICT option is set,
+the resolver <span class="bcp14">MUST</span> authenticate all encrypted connections it makes during
+resolution. If cached data is to be used during resolution, it <span class="bcp14">MUST</span> have
+been received over an authenticated encrypted connection.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <div id="setting-a-privacy-response-value">
 <section id="section-6.1">
         <h3 id="name-setting-a-privacy-response-">
@@ -1503,13 +1532,16 @@ due to falling back or to the client query having a value of NONE), the
 resolver <span class="bcp14">MUST</span> set the value to CLEARTEXT. If the resolver solely used
 encrypted transports and data from its cache to retrieve the answer, it
 responds with a value of ENCRYPTED. What transport cached data arrived
-over does not matter in this case.<a href="#section-6.1-1" class="pilcrow">¶</a></p>
+over does not matter in this case. If the resolver was able to resolve
+the query using only data that arrived over authenticated transports
+(either from the cache or from a response), it response with a value
+of AUTHENTICATED<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="failure-to-honor-a-opportunistic-no-fallback-request">
+<div id="failure-to-honor-a-opportunistic-no-fallback-or-strict-request">
 <section id="section-6.2">
         <h3 id="name-failure-to-honor-a-opportun">
-<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-failure-to-honor-a-opportun" class="section-name selfRef">Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request</a>
+<a href="#section-6.2" class="section-number selfRef">6.2. </a><a href="#name-failure-to-honor-a-opportun" class="section-name selfRef">Failure to Honor a OPPORTUNISTIC-NO-FALLBACK or STRICT Request</a>
         </h3>
 <p id="section-6.2-1">If the recursive resolver cannot obtain the answer without sending a
 query over an unencrypted transport, and the client requested OPPORTUNISTIC-NO-FALLBACK,
@@ -1517,11 +1549,13 @@ the resolver <span class="bcp14">MUST NOT</span> send the query that could not b
 RCODE SERVFAIL and <span class="bcp14">SHOULD</span> include an Extended DNS Error <span>[<a href="#RFC8914" class="cite xref">RFC8914</a>]</span>
 with INFO-CODE TBD2 ("Encrypted Transport Unavailable"). The response
 <span class="bcp14">MUST</span> include the PRIVACY option with the value ENCRYPTED, since no
-information about the query was sent in cleartext.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
-<p id="section-6.2-2">It is expected that during early deployment, most OPPORTUNISTIC-NO-FALLBACK requests will
+information about the query was sent in cleartext. Failure to honor
+a STRICT request works similarly, the resolver sets an INFO-CODE of
+TBD2 and an AUTHENTICATED value for the PRIVACY RESPONSE field.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
+<p id="section-6.2-2">It is expected that during early deployment, most OPPORTUNISTIC-NO-FALLBACK and STRICT requests will
 fail. However, for debugging purposes, such a signal is valuable for
 testing that recursive resolvers actually honor the encryption request.
-Also, as the technology matures, the OPPORTUNISTIC-NO-FALLBACK option might eventually
+Also, as the technology matures, the OPPORTUNISTIC-NO-FALLBACK and STRICT options might eventually
 become viable.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1800,7 +1834,7 @@ in the "Extended DNS Error Codes" registry.<a href="#section-11-3" class="pilcro
 <dl class="references">
 <dt id="I-D.johani-dnsop-transport-signaling">[I-D.johani-dnsop-transport-signaling]</dt>
         <dd>
-<span class="refAuthor">Stenstam, J.</span>, <span class="refAuthor">Fernandez, L.</span>, <span class="refAuthor">Bergström, E.</span>, <span class="refAuthor">Homburg, P.</span>, and <span class="refAuthor">S. Dickinson</span>, <span class="refTitle">"Authoritative DNS Transport Signaling"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-johani-dnsop-transport-signaling-02</span>, <time datetime="2025-10-20" class="refDate">20 October 2025</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-johani-dnsop-transport-signaling-02">https://datatracker.ietf.org/doc/html/draft-johani-dnsop-transport-signaling-02</a>&gt;</span>. </dd>
+<span class="refAuthor">Stenstam, J.</span>, <span class="refAuthor">Fernandez, L.</span>, <span class="refAuthor">Bergström, E.</span>, <span class="refAuthor">Homburg, P.</span>, and <span class="refAuthor">S. Dickinson</span>, <span class="refTitle">"Opportunistic Operator based SVCB transport signaling (OOTS)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-johani-dnsop-transport-signaling-03</span>, <time datetime="2026-11-02" class="refDate">2 November 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-johani-dnsop-transport-signaling-03">https://datatracker.ietf.org/doc/html/draft-johani-dnsop-transport-signaling-03</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.wesplaap-deleg-transport">[I-D.wesplaap-deleg-transport]</dt>
         <dd>
