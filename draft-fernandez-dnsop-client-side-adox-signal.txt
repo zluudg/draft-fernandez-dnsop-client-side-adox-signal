@@ -5,8 +5,8 @@
 DNSOP                                                       L. Fernandez
 Internet-Draft                           The Swedish Internet Foundation
 Intended status: Standards Track                                 V. Gosu
-Expires: 23 April 2027                                           Mozilla
-                                                         20 October 2026
+Expires: 6 May 2027                                              Mozilla
+                                                         2 November 2026
 
 
       Client-side Request for Encrypted Authoritative DNS Queries
@@ -17,7 +17,7 @@ Abstract
    This document describes an EDNS0 option that a client can attach to a
    DNS query to signal to a recursive resolver that it SHOULD prefer
    encrypted transports while resolving the query.  The option can also
-   be used on the return path by the recursor to signal whether
+   be used on the return path by the resolver to signal whether
    encryption was achievable or not.
 
 About This Document
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 April 2027.
+   This Internet-Draft will expire on 6 May 2027.
 
 Copyright Notice
 
@@ -74,28 +74,29 @@ Table of Contents
    1.  Introduction
    2.  Terminology
    3.  The EDNS0 PRIVACY Option
-   4.  Privacy Values
-     4.1.  Interpretations of Privacy Values in a query context
-       4.1.1.  NONE
-       4.1.2.  OPPORTUNISTIC
-       4.1.3.  STRICT
-     4.2.  Interpretations of Privacy Values in a response context
-       4.2.1.  CLEARTEXT
-       4.2.2.  ENCRYPTED
-       4.2.3.  CACHED
-   5.  Protocol Description
-     5.1.  Setting a Response PRIVACY Value
-     5.2.  Failure to Honor a STRICT Request
-   6.  Relation to QNAME minimisation
-   7.  Conventions and Definitions
-   8.  Implementation Status
-     8.1.  TDNS
-     8.2.  Firefox
-   9.  Security Considerations
-   10. IANA Considerations
-   11. References
-     11.1.  Normative References
-     11.2.  Informative References
+   4.  PRIVACY REQUEST Values
+   5.  PRIVACY RESPONSE Values
+     5.1.  Interpretations of Privacy Request Values
+       5.1.1.  NONE
+       5.1.2.  OPPORTUNISTIC
+       5.1.3.  OPPORTUNISTIC-NO-FALLBACK
+     5.2.  Interpretations of Privacy Response Values
+       5.2.1.  CLEARTEXT
+       5.2.2.  ENCRYPTED
+       5.2.3.  CACHED
+   6.  Protocol Description
+     6.1.  Setting a PRIVACY RESPONSE Value
+     6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
+   7.  Relation to QNAME minimisation
+   8.  Conventions and Definitions
+   9.  Implementation Status
+     9.1.  TDNS
+     9.2.  Firefox
+   10. Security Considerations
+   11. IANA Considerations
+   12. References
+     12.1.  Normative References
+     12.2.  Informative References
    Acknowledgments
    Authors' Addresses
 
@@ -128,13 +129,11 @@ Table of Contents
 
 2.  Terminology
 
-   Client: A stub resolver, typically part of an end-user's operating
-   system or web browser.
+   Client: A stub resolver as defined in [RFC9499] or some other
+   software, such as a browser, is close to the end-user and sends
+   recursice DNS queries.
 
-   Recursive Resolver/Recursor: A resolver that resolves a query on
-   behalf of a client.  This is done by first querying the root of the
-   DNS tree and, if necessary, following the chain of delegations with
-   more queries until an authoritative server is found.
+   Resolver: As defined in [RFC9499].
 
    ADoX: Authoritative DNS-over-X, where X implies some arbitrary
    encrypted transport protocol.
@@ -150,7 +149,7 @@ Table of Contents
        +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
    2:  |                           OPTION-LENGTH                       |
        +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-   4:  |           PRIVACY             |            VALIDATED          |
+   4:  |          PRIVACY REQUEST      |        PRIVACY_RESPONSE       |
        +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 
    Field definition details:
@@ -162,73 +161,80 @@ Table of Contents
    option is present.  Consumers of this signal SHOULD NOT act on
    malformed options.
 
-   PRIVACY: For queries, this value encodes the client's desired level
-   of privacy.  For responses, this value encodes the level of privacy
-   that the resolver was able to achieve.  Currently defined values are
-   listed in Section 4.
+   PRIVACY REQUEST: This value encodes the client's desired level of
+   privacy.  Currently defined values are listed in Section 4.  In a DNS
+   response, the recipient MUST ignore this field and the sender SHOULD
+   set it to 0.
 
-   VALIDATED: For queries, this field is unused and MUST be set to 0.
-   For responses, it SHOULD be set to 1 if the recursor successfully
-   validated the certificates it encountered during the resolution
-   process.  Else, it MUST be set to 0.  Validation can be done via
-   mechanisms such as DANE [RFC6698] or the WebPKI.  The VALIDATED field
-   SHOULD only be set if the PRIVACY field is CACHED or ENCRYPTED.
+   PRIVACY RESPONSE: This value encodes the level of privacy that the
+   resolver was able to achieve.  Currently defined values are listed in
+   Section 5.  In a DNS query, the recipient MUST ignore this field and
+   the sender SHOULD set it to 0.
 
-4.  Privacy Values
+4.  PRIVACY REQUEST Values
 
-                   +=======+==========+===============+
-                   | Value | Context  | Mnemonic      |
-                   +=======+==========+===============+
-                   | 0     | Query    | NONE          |
-                   +-------+----------+---------------+
-                   | 0     | Response | CLEARTEXT     |
-                   +-------+----------+---------------+
-                   | 1     | Query    | OPPORTUNISTIC |
-                   +-------+----------+---------------+
-                   | 1     | Response | ENCRYPTED     |
-                   +-------+----------+---------------+
-                   | 2     | Query    | STRICT        |
-                   +-------+----------+---------------+
-                   | 2     | Response | CACHED        |
-                   +-------+----------+---------------+
+              +=======+=========+===========================+
+              | Value | Context | Mnemonic                  |
+              +=======+=========+===========================+
+              | 0     | Query   | NONE                      |
+              +-------+---------+---------------------------+
+              | 1     | Query   | OPPORTUNISTIC             |
+              +-------+---------+---------------------------+
+              | 2     | Query   | OPPORTUNISTIC-NO-FALLBACK |
+              +-------+---------+---------------------------+
 
-                                 Table 1
+                                  Table 1
 
-4.1.  Interpretations of Privacy Values in a query context
+5.  PRIVACY RESPONSE Values
 
-4.1.1.  NONE
+                     +=======+==========+===========+
+                     | Value | Context  | Mnemonic  |
+                     +=======+==========+===========+
+                     | 0     | Response | CLEARTEXT |
+                     +-------+----------+-----------+
+                     | 1     | Response | ENCRYPTED |
+                     +-------+----------+-----------+
+                     | 2     | Response | CACHED    |
+                     +-------+----------+-----------+
+
+                                 Table 2
+
+5.1.  Interpretations of Privacy Request Values
+
+5.1.1.  NONE
 
    Same effect as having no client signal at all.  No privacy requested
    by the client that is sending the query.
 
-4.1.2.  OPPORTUNISTIC
+5.1.2.  OPPORTUNISTIC
 
    The client is requesting a preference for resolving the query using
    encrypted transports.  However, fallback to unencrypted transport is
    acceptable.
 
-4.1.3.  STRICT
+5.1.3.  OPPORTUNISTIC-NO-FALLBACK
 
-   The client is requesting a strict preference for resolving the query
-   using encrypted transports.  Leaking information about the query over
-   unencrypted transports is not acceptable.
+   The client is requesting a preference for resolving the query using
+   encrypted transports.  Fallback to unencrypted transport is not
+   acceptable.
 
-4.2.  Interpretations of Privacy Values in a response context
+5.2.  Interpretations of Privacy Response Values
 
-4.2.1.  CLEARTEXT
+5.2.1.  CLEARTEXT
 
-   The answer was fetched over an unencrypted connection.
+   The resolver had to send at least one unencrypted query during
+   resolution.
 
-4.2.2.  ENCRYPTED
+5.2.2.  ENCRYPTED
 
-   The answer was fetched only over encrypted transports.
+   The resolver only sent encrypted queries or used cached data during
+   resolution.
 
-4.2.3.  CACHED
+5.2.3.  CACHED
 
-   The answer was fetched from the resolver's cache and no queries had
-   to be sent out.
+   The final answer was fetched directly from the resolver's cache.
 
-5.  Protocol Description
+6.  Protocol Description
 
    A client adds the PRIVACY EDNS0 option to a recursive query before
    sending it.  A client SHOULD NOT add the PRIVACY option to recursive
@@ -238,21 +244,21 @@ Table of Contents
    Given that the client sent its query using an encrypted transport,
    the recursive resolver will try to honor the PRIVACY option.  If it
    is NONE, it means the client does not care about what transports are
-   used to resolve the query and the recursor may resolve it in any way
-   deemed suitable.  If the option is OPPORTUNISTIC, the recursor MUST
+   used to resolve the query and the resolver may resolve it in any way
+   deemed suitable.  If the option is OPPORTUNISTIC, the resolver MUST
    attempt encrypted transport to all nameserver it knows support
    encryption while traversing the delegation chain.  However, the
-   recursor is allowed to fall back to an unencrypted transport after a
-   failed attempt.  If the option is STRICT the recursor MUST NOT
-   perform such a fallback at any point during the resolution process.
-   Using contents from the cache is always okay as this does not leak
-   any information about the client's query.
+   resolver is allowed to fall back to an unencrypted transport after a
+   failed attempt.  If the option is OPPORTUNISTIC-NO-FALLBACK the
+   resolver MUST NOT perform such a fallback at any point during the
+   resolution process.  Using contents from the cache is always okay as
+   this does not leak any information about the client's query.
 
-5.1.  Setting a Response PRIVACY Value
+6.1.  Setting a PRIVACY RESPONSE Value
 
    A recursive resolver SHOULD only set an EDNS0 PRIVACY option if the
    option was present in the query.  If the data was readily available
-   in the recursor's cache, it sets a value of CACHED.  If at any point
+   in the resolver's cache, it sets a value of CACHED.  If at any point
    during the resolution process, a query was sent unencrypted (either
    due to falling back or to the client query having a value of NONE),
    the resolver MUST set the value to CLEARTEXT.  If the resolver solely
@@ -260,36 +266,37 @@ Table of Contents
    answer, it responds with a value of ENCRYPTED.  What transport cached
    data arrived over does not matter in this case.
 
-5.2.  Failure to Honor a STRICT Request
+6.2.  Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
 
    If the recursive resolver cannot obtain the answer without sending a
-   query over an unencrypted transport, and the client requested STRICT,
-   the resolver MUST NOT send that query.  It MUST instead respond with
-   RCODE SERVFAIL and SHOULD include an Extended DNS Error [RFC8914]
-   with INFO-CODE TBD2 ("Encrypted Transport Unavailable").  The
-   response MUST include the PRIVACY option with the value ENCRYPTED,
-   since no information about the query was sent in cleartext.
+   query over an unencrypted transport, and the client requested
+   OPPORTUNISTIC-NO-FALLBACK, the resolver MUST NOT send the query that
+   could not be sent encrypted.  It MUST instead respond with RCODE
+   SERVFAIL and SHOULD include an Extended DNS Error [RFC8914] with
+   INFO-CODE TBD2 ("Encrypted Transport Unavailable").  The response
+   MUST include the PRIVACY option with the value ENCRYPTED, since no
+   information about the query was sent in cleartext.
 
-   It is expected that during early deployment, most STRICT requests
-   will fail.  However, for debugging purposes, such a signal is
-   valuable for testing that recursive resolvers actually honor the
-   encryption request.  Also, as the technology matures, the STRICT
-   option might eventually become viable.
+   It is expected that during early deployment, most OPPORTUNISTIC-NO-
+   FALLBACK requests will fail.  However, for debugging purposes, such a
+   signal is valuable for testing that recursive resolvers actually
+   honor the encryption request.  Also, as the technology matures, the
+   OPPORTUNISTIC-NO-FALLBACK option might eventually become viable.
 
-6.  Relation to QNAME minimisation
+7.  Relation to QNAME minimisation
 
    QNAME minimisation [RFC9156] is another privacy-enhancement for
    authoritative DNS that recursive resolvers can implement.  It SHOULD
    be considered orthogonal to what is proposed in this draft.  That is,
-   the value that the recursor sets for the PRIVACY option SHOULD NOT be
-   affected in any way by whether the recursor employs QNAME
+   the value that the resolver sets for the PRIVACY option SHOULD NOT be
+   affected in any way by whether the resolver employs QNAME
    minimisation or not.  QNAME minimization does not give as good
    privacy as encryption if there are more than two or three
    delegations.  On the other hand, QNAME minimization avoids leaking
    information to authoritative servers, which means there might still
    be good reasons to use it.
 
-7.  Conventions and Definitions
+8.  Conventions and Definitions
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
    "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
@@ -297,7 +304,7 @@ Table of Contents
    BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
    capitals, as shown here.
 
-8.  Implementation Status
+9.  Implementation Status
 
    This section is to be removed before publishing as an RFC.
 
@@ -321,7 +328,7 @@ Table of Contents
    It is up to the individual working groups to use this information as
    they see fit".
 
-8.1.  TDNS
+9.1.  TDNS
 
    Organization:  The Swedish Internet Foundation
 
@@ -331,9 +338,9 @@ Table of Contents
    Maturity:  Experimental
 
    Coverage:  Recursive resolver: parsing the client signal, honoring
-      OPPORTUNISTIC and STRICT, setting the response PRIVACY value.
-      Stub/client: Setting the PRIVACY value and interpreting the
-      PRIVACY value in the response.
+      OPPORTUNISTIC requests, setting the response PRIVACY value.  Stub/
+      client: Setting the PRIVACY value and interpreting the PRIVACY
+      value in the response.
 
    Licensing:  BSD-2-Clause
 
@@ -341,7 +348,7 @@ Table of Contents
 
    Last updated:  October 2026
 
-8.2.  Firefox
+9.2.  Firefox
 
    Organization:  Mozilla
 
@@ -360,7 +367,7 @@ Table of Contents
 
    Last updated:  October 2026
 
-9.  Security Considerations
+10.  Security Considerations
 
    Enables/simplifies cache probing through the CACHED option.  However,
    this is already possible through measuring response times or
@@ -372,7 +379,7 @@ Table of Contents
    resolver.  This is somewhat analogous to how the AD-bit is used
    between a client and a resolver in DNSSEC [RFC4035].
 
-10.  IANA Considerations
+11.  IANA Considerations
 
    This document defines a new EDNS(0) option, entitled "client-privacy-
    signal", assigned a value of TBD1 "DNS EDNS0 Option Codes (OPT)"
@@ -384,11 +391,24 @@ Table of Contents
      | TBD1  | client-privacy-signal | Standard | ( This document ) |
      +-------+-----------------------+----------+-------------------+
 
-                                 Table 2
+                                 Table 3
 
-11.  References
+   This document also defines a new INFO-CODE, entitled "Encrypted
+   Transport Unavailable", assigned a value of TBD2 in the "Extended DNS
+   Error Codes" registry.
 
-11.1.  Normative References
+    +=======+=================================+==========+============+
+    | Value | Name                            | Status   | Reference  |
+    +=======+=================================+==========+============+
+    | TBD2  | encrypted-transport-unavailable | Standard | ( This     |
+    |       |                                 |          | document ) |
+    +-------+---------------------------------+----------+------------+
+
+                                  Table 4
+
+12.  References
+
+12.1.  Normative References
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -399,11 +419,6 @@ Table of Contents
               Rose, "Protocol Modifications for the DNS Security
               Extensions", RFC 4035, DOI 10.17487/RFC4035, March 2005,
               <https://www.rfc-editor.org/rfc/rfc4035>.
-
-   [RFC6698]  Hoffman, P. and J. Schlyter, "The DNS-Based Authentication
-              of Named Entities (DANE) Transport Layer Security (TLS)
-              Protocol: TLSA", RFC 6698, DOI 10.17487/RFC6698, August
-              2012, <https://www.rfc-editor.org/rfc/rfc6698>.
 
    [RFC6891]  Damas, J., Graff, M., and P. Vixie, "Extension Mechanisms
               for DNS (EDNS(0))", STD 75, RFC 6891,
@@ -438,7 +453,11 @@ Table of Contents
               DOI 10.17487/RFC9250, May 2022,
               <https://www.rfc-editor.org/rfc/rfc9250>.
 
-11.2.  Informative References
+   [RFC9499]  Hoffman, P. and K. Fujiwara, "DNS Terminology", BCP 219,
+              RFC 9499, DOI 10.17487/RFC9499, March 2024,
+              <https://www.rfc-editor.org/rfc/rfc9499>.
+
+12.2.  Informative References
 
    [I-D.johani-dnsop-transport-signaling]
               Stenstam, J., Fernandez, L., Bergström, E., Homburg, P.,
