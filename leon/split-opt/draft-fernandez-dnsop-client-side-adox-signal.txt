@@ -1,0 +1,479 @@
+
+
+
+
+DNSOP                                                       L. Fernandez
+Internet-Draft                           The Swedish Internet Foundation
+Intended status: Standards Track                                 V. Gosu
+Expires: 6 May 2027                                              Mozilla
+                                                         2 November 2026
+
+
+      Client-side Request for Encrypted Authoritative DNS Queries
+          draft-fernandez-dnsop-client-side-adox-signal-latest
+
+Abstract
+
+   This document describes an EDNS0 option that a client can attach to a
+   DNS query to signal to a recursive resolver that it SHOULD prefer
+   encrypted transports while resolving the query.  The option can also
+   be used on the return path by the resolver to signal whether
+   encryption was achievable or not.
+
+About This Document
+
+   This note is to be removed before publishing as an RFC.
+
+   The latest revision of this draft can be found at
+   https://zluudg.github.io/draft-client-side-adox-signal/draft-
+   fernandez-dnsop-client-side-adox-signal.html.  Status information for
+   this document may be found at https://datatracker.ietf.org/doc/draft-
+   fernandez-dnsop-client-side-adox-signal/.
+
+   Discussion of this document takes place on the DNSOP Working Group
+   mailing list (mailto:dnsop@ietf.org), which is archived at
+   https://mailarchive.ietf.org/arch/browse/dnsop/.  Subscribe at
+   https://www.ietf.org/mailman/listinfo/dnsop/.
+
+   Source for this draft and an issue tracker can be found at
+   https://github.com/zluudg/draft-client-side-adox-signal.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 6 May 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction
+   2.  Terminology
+   3.  The EDNS0 PRIVACY Option
+   4.  PRIVACY REQUEST Values
+   5.  PRIVACY RESPONSE Values
+     5.1.  Interpretations of Privacy Request Values
+       5.1.1.  NONE
+       5.1.2.  OPPORTUNISTIC
+       5.1.3.  OPPORTUNISTIC-NO-FALLBACK
+     5.2.  Interpretations of Privacy Response Values
+       5.2.1.  CLEARTEXT
+       5.2.2.  ENCRYPTED
+       5.2.3.  CACHED
+   6.  Protocol Description
+     6.1.  Setting a PRIVACY RESPONSE Value
+   7.  Relation to QNAME minimisation
+   8.  Conventions and Definitions
+   9.  Implementation Status
+     9.1.  TDNS
+     9.2.  Firefox
+   10. Security Considerations
+   11. IANA Considerations
+   12. References
+     12.1.  Normative References
+     12.2.  Informative References
+   Acknowledgments
+   Authors' Addresses
+
+1.  Introduction
+
+   A DNS client can choose what protocol to use when it sends a query to
+   a resolver.  There are several privacy-friendly options that the
+   client can choose between such as HTTPS [RFC8484], QUIC [RFC9250] and
+   TLS [RFC7858].  However, the choice only affects the first hop and
+   the query will typically be sent in cleartext by the resolver during
+   the resolution process.  In order to preserve the privacy of the
+   client beyond the first hop, the client SHOULD be able to signal a
+   desire that the resolver uses encrypted transports during the
+   resolution process.  Furthermore, the client SHOULD be informed of
+   how the resolution was carried out, in case it would like to discard
+   data that was not received over an encrypted transport.
+
+   This document defines an EDNS0 [RFC6891] option that allows a client
+   to signal a preference for encrypted authoritative DNS (ADoX).  By
+   signalling a preference, the client can urge a recursive resolver to
+   discover possibilities for encrypted transport.  Means of discovery
+   include, but are not limited to, [RFC9539],
+   [I-D.johani-dnsop-transport-signaling] and
+   [I-D.wesplaap-deleg-transport].  The signal from the client can also
+   prevent the recursive resolver from leaking queries that would
+   otherwise have been sent in cleartext.  The same EDNS0 option can
+   also be used on the return path so that the recursive resolver can
+   give an indication to the client about what level of privacy was
+   achieved for a particular query.
+
+2.  Terminology
+
+   Client: A stub resolver as defined in [RFC9499] or some other
+   software, such as a browser, is close to the end-user and sends
+   recursice DNS queries.
+
+   Resolver: As defined in [RFC9499].
+
+   ADoX: Authoritative DNS-over-X, where X implies some arbitrary
+   encrypted transport protocol.
+
+3.  The EDNS0 PRIVACY Option
+
+   The EDNS0 PRIVACY option is structured as follows:
+
+                                                 1   1   1   1   1   1
+         0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   0:  |                            OPTION-CODE                        |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   2:  |                           OPTION-LENGTH                       |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   4:  |          PRIVACY REQUEST      |        PRIVACY_RESPONSE       |
+       +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   Field definition details:
+
+   OPTION-CODE: The EDNS0 option code for client-privacy-signal, defined
+   as TBD1.
+
+   OPTION-LENGTH: The option length MUST have a value of 2 if this
+   option is present.  Consumers of this signal SHOULD NOT act on
+   malformed options.
+
+   PRIVACY REQUEST: This value encodes the client's desired level of
+   privacy.  Currently defined values are listed in Section 4.  In a DNS
+   response, the recipient MUST ignore this field and the sender SHOULD
+   set it to 0.
+
+   PRIVACY RESPONSE: This value encodes the level of privacy that the
+   resolver was able to achieve.  Currently defined values are listed in
+   Section 5.  In a DNS query, the recipient MUST ignore this field and
+   the sender SHOULD set it to 0.
+
+4.  PRIVACY REQUEST Values
+
+              +=======+=========+===========================+
+              | Value | Context | Mnemonic                  |
+              +=======+=========+===========================+
+              | 0     | Query   | NONE                      |
+              +-------+---------+---------------------------+
+              | 1     | Query   | OPPORTUNISTIC             |
+              +-------+---------+---------------------------+
+              | 2     | Query   | OPPORTUNISTIC-NO-FALLBACK |
+              +-------+---------+---------------------------+
+
+                                  Table 1
+
+5.  PRIVACY RESPONSE Values
+
+                     +=======+==========+===========+
+                     | Value | Context  | Mnemonic  |
+                     +=======+==========+===========+
+                     | 0     | Response | CLEARTEXT |
+                     +-------+----------+-----------+
+                     | 1     | Response | ENCRYPTED |
+                     +-------+----------+-----------+
+                     | 2     | Response | CACHED    |
+                     +-------+----------+-----------+
+
+                                 Table 2
+
+5.1.  Interpretations of Privacy Request Values
+
+5.1.1.  NONE
+
+   Same effect as having no client signal at all.  No privacy requested
+   by the client that is sending the query.
+
+5.1.2.  OPPORTUNISTIC
+
+   The client is requesting a preference for resolving the query using
+   encrypted transports.  However, fallback to unencrypted transport is
+   acceptable.
+
+5.1.3.  OPPORTUNISTIC-NO-FALLBACK
+
+   The client is requesting a preference for resolving the query using
+   encrypted transports.  Fallback to unencrypted transport is not
+   acceptable.
+
+5.2.  Interpretations of Privacy Response Values
+
+5.2.1.  CLEARTEXT
+
+   The resolver had to send at least one unencrypted query during
+   resolution.
+
+5.2.2.  ENCRYPTED
+
+   The resolver only sent encrypted queries or used cached data during
+   resolution.
+
+5.2.3.  CACHED
+
+   The final answer was fetched directly from the resolver's cache.
+
+6.  Protocol Description
+
+   A client adds the PRIVACY EDNS0 option to a recursive query before
+   sending it.  A client SHOULD NOT add the PRIVACY option to recursive
+   queries being sent in cleartext as this would be counter to what the
+   client is trying to achieve.
+
+   Given that the client sent its query using an encrypted transport,
+   the recursive resolver will try to honor the PRIVACY option.  If it
+   is NONE, it means the client does not care about what transports are
+   used to resolve the query and the resolver may resolve it in any way
+   deemed suitable.  If the option is OPPORTUNISTIC, the resolver MUST
+   attempt encrypted transport to all nameserver it knows support
+   encryption while traversing the delegation chain.  However, the
+   resolver is allowed to fall back to an unencrypted transport after a
+   failed attempt.  If the option is OPPORTUNISTIC-NO-FALLBACK the
+   resolver MUST NOT perform such a fallback at any point during the
+   resolution process.  Using contents from the cache is always okay as
+   this does not leak any information about the client's query.
+
+6.1.  Setting a PRIVACY RESPONSE Value
+
+   A recursive resolver SHOULD only set an EDNS0 PRIVACY option if the
+   option was present in the query.  If the data was readily available
+   in the resolver's cache, it sets a value of CACHED.  If at any point
+   during the resolution process, a query was sent unencrypted (either
+   due to falling back or to the client query having a value of NONE),
+   the resolver MUST set the value to CLEARTEXT.  If the resolver solely
+   used encrypted transports and data from its cache to retrieve the
+   answer, it responds with a value of ENCRYPTED.  What transport cached
+   data arrived over does not matter in this case.
+
+7.  Relation to QNAME minimisation
+
+   QNAME minimisation [RFC9156] is another privacy-enhancement for
+   authoritative DNS that recursive resolvers can implement.  It SHOULD
+   be considered orthogonal to what is proposed in this draft.  That is,
+   the value that the resolver sets for the PRIVACY option SHOULD NOT be
+   affected in any way by whether the resolver employs QNAME
+   minimisation or not.  QNAME minimization does not give as good
+   privacy as encryption if there are more than two or three
+   delegations.  On the other hand, QNAME minimization avoids leaking
+   information to authoritative servers, which means there might still
+   be good reasons to use it.
+
+8.  Conventions and Definitions
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in
+   BCP 14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+9.  Implementation Status
+
+   This section is to be removed before publishing as an RFC.
+
+   This section records the status of known implementations of the
+   protocol defined by this specification at the time of posting of this
+   Internet-Draft, and is based on a proposal described in [RFC7942].
+   The description of implementations in this section is intended to
+   assist the IETF in its decision processes in progressing drafts to
+   RFCs.  Please note that the listing of any individual implementation
+   here does not imply endorsement by the IETF.  Furthermore, no effort
+   has been spent to verify the information presented here that was
+   supplied by IETF contributors.  This is not intended as, and must not
+   be construed to be, a catalog of available implementations or their
+   features.  Readers are advised to note that other implementations may
+   exist.
+
+   According to [RFC7942], "this will allow reviewers and working groups
+   to assign due consideration to documents that have the benefit of
+   running code, which may serve as evidence of valuable experimentation
+   and feedback that have made the implemented protocols more mature.
+   It is up to the individual working groups to use this information as
+   they see fit".
+
+9.1.  TDNS
+
+   Organization:  The Swedish Internet Foundation
+
+   Description:  TDNS, a framework of experimental DNS servers.
+      https://github.com/johanix/tdns (https://github.com/johanix/tdns)
+
+   Maturity:  Experimental
+
+   Coverage:  Recursive resolver: parsing the client signal, honoring
+      OPPORTUNISTIC requests, setting the response PRIVACY value.  Stub/
+      client: Setting the PRIVACY value and interpreting the PRIVACY
+      value in the response.
+
+   Licensing:  BSD-2-Clause
+
+   Contact:  johan.stenstam@internetstiftelsen.se
+
+   Last updated:  October 2026
+
+9.2.  Firefox
+
+   Organization:  Mozilla
+
+   Description:  Firefox, a web-browser.
+      https://phabricator.services.mozilla.com/D321467
+      (https://phabricator.services.mozilla.com/D321467)
+
+   Maturity:  Experimental
+
+   Coverage:  Setting the PRIVACY value in outgoing DoH queries and
+      interpreting the PRIVACY value in the response.
+
+   Licensing:  MPL-2.0
+
+   Contact:  ietf.valentin@gosu.se
+
+   Last updated:  October 2026
+
+10.  Security Considerations
+
+   Enables/simplifies cache probing through the CACHED option.  However,
+   this is already possible through measuring response times or
+   inspecting TTLs.  The PRIVACY option does not introduce any novel
+   attack vectors.
+
+   The client can only really trust the PRIVACY option when it is
+   received over a secure channel, such as DoH, from a trusted recursive
+   resolver.  This is somewhat analogous to how the AD-bit is used
+   between a client and a resolver in DNSSEC [RFC4035].
+
+11.  IANA Considerations
+
+   This document defines a new EDNS(0) option, entitled "client-privacy-
+   signal", assigned a value of TBD1 "DNS EDNS0 Option Codes (OPT)"
+   registry
+
+     +=======+=======================+==========+===================+
+     | Value | Name                  | Status   | Reference         |
+     +=======+=======================+==========+===================+
+     | TBD1  | client-privacy-signal | Standard | ( This document ) |
+     +-------+-----------------------+----------+-------------------+
+
+                                 Table 3
+
+   This document also defines a new INFO-CODE, entitled "Encrypted
+   Transport Unavailable", assigned a value of TBD2 in the "Extended DNS
+   Error Codes" registry.
+
+    +=======+=================================+==========+============+
+    | Value | Name                            | Status   | Reference  |
+    +=======+=================================+==========+============+
+    | TBD2  | encrypted-transport-unavailable | Standard | ( This     |
+    |       |                                 |          | document ) |
+    +-------+---------------------------------+----------+------------+
+
+                                  Table 4
+
+12.  References
+
+12.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/rfc/rfc2119>.
+
+   [RFC4035]  Arends, R., Austein, R., Larson, M., Massey, D., and S.
+              Rose, "Protocol Modifications for the DNS Security
+              Extensions", RFC 4035, DOI 10.17487/RFC4035, March 2005,
+              <https://www.rfc-editor.org/rfc/rfc4035>.
+
+   [RFC6891]  Damas, J., Graff, M., and P. Vixie, "Extension Mechanisms
+              for DNS (EDNS(0))", STD 75, RFC 6891,
+              DOI 10.17487/RFC6891, April 2013,
+              <https://www.rfc-editor.org/rfc/rfc6891>.
+
+   [RFC7858]  Hu, Z., Zhu, L., Heidemann, J., Mankin, A., Wessels, D.,
+              and P. Hoffman, "Specification for DNS over Transport
+              Layer Security (TLS)", RFC 7858, DOI 10.17487/RFC7858, May
+              2016, <https://www.rfc-editor.org/rfc/rfc7858>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
+
+   [RFC8484]  Hoffman, P. and P. McManus, "DNS Queries over HTTPS
+              (DoH)", RFC 8484, DOI 10.17487/RFC8484, October 2018,
+              <https://www.rfc-editor.org/rfc/rfc8484>.
+
+   [RFC9156]  Bortzmeyer, S., Dolmans, R., and P. Hoffman, "DNS Query
+              Name Minimisation to Improve Privacy", RFC 9156,
+              DOI 10.17487/RFC9156, November 2021,
+              <https://www.rfc-editor.org/rfc/rfc9156>.
+
+   [RFC9250]  Huitema, C., Dickinson, S., and A. Mankin, "DNS over
+              Dedicated QUIC Connections", RFC 9250,
+              DOI 10.17487/RFC9250, May 2022,
+              <https://www.rfc-editor.org/rfc/rfc9250>.
+
+   [RFC9499]  Hoffman, P. and K. Fujiwara, "DNS Terminology", BCP 219,
+              RFC 9499, DOI 10.17487/RFC9499, March 2024,
+              <https://www.rfc-editor.org/rfc/rfc9499>.
+
+12.2.  Informative References
+
+   [I-D.johani-dnsop-transport-signaling]
+              Stenstam, J., Fernandez, L., Bergström, E., Homburg, P.,
+              and S. Dickinson, "Authoritative DNS Transport Signaling",
+              Work in Progress, Internet-Draft, draft-johani-dnsop-
+              transport-signaling-02, 20 October 2025,
+              <https://datatracker.ietf.org/doc/html/draft-johani-dnsop-
+              transport-signaling-02>.
+
+   [I-D.wesplaap-deleg-transport]
+              April, T., Špaček, P., Weber, R., and Lawrence,
+              "Extensible Delegation for DNS using different transport
+              protocols", Work in Progress, Internet-Draft, draft-
+              wesplaap-deleg-transport-00, 3 March 2025,
+              <https://datatracker.ietf.org/doc/html/draft-wesplaap-
+              deleg-transport-00>.
+
+   [RFC7942]  Sheffer, Y. and A. Farrel, "Improving Awareness of Running
+              Code: The Implementation Status Section", BCP 205,
+              RFC 7942, DOI 10.17487/RFC7942, July 2016,
+              <https://www.rfc-editor.org/rfc/rfc7942>.
+
+   [RFC9539]  Gillmor, D. K., Ed., Salazar, J., Ed., and P. Hoffman,
+              Ed., "Unilateral Opportunistic Deployment of Encrypted
+              Recursive-to-Authoritative DNS", RFC 9539,
+              DOI 10.17487/RFC9539, February 2024,
+              <https://www.rfc-editor.org/rfc/rfc9539>.
+
+Acknowledgments
+
+   TODO acknowledge.
+
+Authors' Addresses
+
+   Leon Fernandez
+   The Swedish Internet Foundation
+   Email: leon.fernandez@internetstiftelsen.se
+
+
+   Valentin Gosu
+   Mozilla
+   Email: ietf.valentin@gosu.se
