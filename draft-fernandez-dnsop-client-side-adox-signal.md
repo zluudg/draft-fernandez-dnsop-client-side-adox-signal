@@ -120,19 +120,21 @@ PRIVACY RESPONSE: This value encodes the level of privacy that the resolver
 
 # PRIVACY REQUEST Values {#privacy-req-values}
 
-| Value | Context  | Mnemonic                  |
-|-------|----------|---------------------------|
-| 0     | Query    | NONE                      |
-| 1     | Query    | OPPORTUNISTIC             |
-| 2     | Query    | OPPORTUNISTIC-NO-FALLBACK |
+| Value | Mnemonic                  |
+|-------|---------------------------|
+| 0     | NONE                      |
+| 1     | OPPORTUNISTIC             |
+| 2     | OPPORTUNISTIC-NO-FALLBACK |
+| 3     | STRICT                    |
 
 # PRIVACY RESPONSE Values {#privacy-rsp-values}
 
-| Value | Context  | Mnemonic      |
-|-------|----------|---------------|
-| 0     | Response | CLEARTEXT     |
-| 1     | Response | ENCRYPTED     |
-| 2     | Response | CACHED        |
+| Value | Mnemonic      |
+|-------|---------------|
+| 0     | CLEARTEXT     |
+| 1     | ENCRYPTED     |
+| 2     | CACHED        |
+| 3     | AUTHENTICATED |
 
 ## Interpretations of Privacy Request Values
 
@@ -150,6 +152,10 @@ The client is requesting a preference for resolving the query using
 encrypted transports. Fallback to unencrypted transport is not
 acceptable.
 
+### STRICT
+The client is requesting a preference for resolving the query using
+authenticated encrypted transport.
+
 ## Interpretations of Privacy Response Values
 
 ### CLEARTEXT
@@ -162,6 +168,13 @@ resolution.
 
 ### CACHED
 The final answer was fetched directly from the resolver's cache.
+
+### AUTHENTICATED
+The resolver only sent encrypted queries or used cached data during
+resolution. Moreover, encrypted connections were authenticated, for
+example via a TLSA record, and cached data was only used if it was
+received via an authenticated transport.
+
 
 # Protocol Description
 A client adds the PRIVACY EDNS0 option to a recursive query before
@@ -180,7 +193,10 @@ resolver is allowed to fall back to an unencrypted transport after a
 failed attempt. If the option is OPPORTUNISTIC-NO-FALLBACK the resolver MUST NOT perform
 such a fallback at any point during the resolution process. Using
 contents from the cache is always okay as this does not leak any
-information about the client's query.
+information about the client's query. If the STRICT option is set,
+the resolver MUST authenticate all encrypted connections it makes during
+resolution. If cached data is to be used during resolution, it MUST have
+been received over an authenticated encrypted connection.
 
 ## Setting a PRIVACY RESPONSE Value
 A recursive resolver SHOULD only set an EDNS0 PRIVACY option if the
@@ -191,21 +207,26 @@ due to falling back or to the client query having a value of NONE), the
 resolver MUST set the value to CLEARTEXT. If the resolver solely used
 encrypted transports and data from its cache to retrieve the answer, it
 responds with a value of ENCRYPTED. What transport cached data arrived
-over does not matter in this case.
+over does not matter in this case. If the resolver was able to resolve
+the query using only data that arrived over authenticated transports
+(either from the cache or from a response), it response with a value
+of AUTHENTICATED
 
-## Failure to Honor a OPPORTUNISTIC-NO-FALLBACK Request
+## Failure to Honor a OPPORTUNISTIC-NO-FALLBACK or STRICT Request
 If the recursive resolver cannot obtain the answer without sending a
 query over an unencrypted transport, and the client requested OPPORTUNISTIC-NO-FALLBACK,
 the resolver MUST NOT send the query that could not be sent encrypted. It MUST instead respond with
 RCODE SERVFAIL and SHOULD include an Extended DNS Error {{!RFC8914}}
 with INFO-CODE TBD2 ("Encrypted Transport Unavailable"). The response
 MUST include the PRIVACY option with the value ENCRYPTED, since no
-information about the query was sent in cleartext.
+information about the query was sent in cleartext. Failure to honor
+a STRICT request works similarly, the resolver sets an INFO-CODE of
+TBD2 and an AUTHENTICATED value for the PRIVACY RESPONSE field.
 
-It is expected that during early deployment, most OPPORTUNISTIC-NO-FALLBACK requests will
+It is expected that during early deployment, most OPPORTUNISTIC-NO-FALLBACK and STRICT requests will
 fail. However, for debugging purposes, such a signal is valuable for
 testing that recursive resolvers actually honor the encryption request.
-Also, as the technology matures, the OPPORTUNISTIC-NO-FALLBACK option might eventually
+Also, as the technology matures, the OPPORTUNISTIC-NO-FALLBACK and STRICT options might eventually
 become viable.
 
 # Relation to QNAME minimisation
