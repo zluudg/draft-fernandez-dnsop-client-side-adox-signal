@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-11-01T03:53:15.805238+00:00",
+  "timestamp": "2026-11-03T04:58:32.674242+00:00",
   "repo": "zluudg/draft-fernandez-dnsop-client-side-adox-signal",
   "labels": [
     {
@@ -97,6 +97,76 @@
           "comments": []
         }
       ]
+    },
+    {
+      "number": 2,
+      "id": "PR_kwDOVQl81s8AAAABMRpm4g",
+      "title": "Split the EDNS0 PRIVACY option, remove STRICT",
+      "url": "https://github.com/zluudg/draft-fernandez-dnsop-client-side-adox-signal/pull/2",
+      "state": "MERGED",
+      "author": "zluudg",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2026-11-02T10:27:44Z",
+      "updatedAt": "2026-11-02T11:55:14Z",
+      "baseRepository": "zluudg/draft-fernandez-dnsop-client-side-adox-signal",
+      "baseRefName": "main",
+      "baseRefOid": "48054d145198f12c35b500760ddd79c2664eea35",
+      "headRepository": "zluudg/draft-fernandez-dnsop-client-side-adox-signal",
+      "headRefName": "leon/split-opt",
+      "headRefOid": "a30e6c71093faa400e13020e0a54a5cc06f6a595",
+      "closedAt": "2026-11-02T11:55:13Z",
+      "mergedAt": "2026-11-02T11:55:13Z",
+      "mergedBy": "zluudg",
+      "mergeCommit": {
+        "oid": "4363e4deb367e14051f91d22ed42536d2b2db219"
+      },
+      "comments": [],
+      "reviews": [
+        {
+          "id": "PRR_kwDOVQl81s8AAAABVduTaA",
+          "commit": {
+            "abbreviatedOid": "a30e6c7"
+          },
+          "author": "valenting",
+          "authorAssociation": "COLLABORATOR",
+          "state": "APPROVED",
+          "body": "",
+          "createdAt": "2026-11-02T10:50:04Z",
+          "updatedAt": "2026-11-02T10:50:04Z",
+          "comments": []
+        }
+      ]
+    },
+    {
+      "number": 3,
+      "id": "PR_kwDOVQl81s8AAAABMaC_0Q",
+      "title": "Mention STRICT mode",
+      "url": "https://github.com/zluudg/draft-fernandez-dnsop-client-side-adox-signal/pull/3",
+      "state": "MERGED",
+      "author": "zluudg",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "",
+      "createdAt": "2026-11-02T21:18:45Z",
+      "updatedAt": "2026-11-02T21:26:22Z",
+      "baseRepository": "zluudg/draft-fernandez-dnsop-client-side-adox-signal",
+      "baseRefName": "main",
+      "baseRefOid": "4363e4deb367e14051f91d22ed42536d2b2db219",
+      "headRepository": "zluudg/draft-fernandez-dnsop-client-side-adox-signal",
+      "headRefName": "leon/split-opt",
+      "headRefOid": "9326f8243cf182276ca31aff66991f5b6ffe909b",
+      "closedAt": "2026-11-02T21:26:22Z",
+      "mergedAt": "2026-11-02T21:26:22Z",
+      "mergedBy": "zluudg",
+      "mergeCommit": {
+        "oid": "2e6a67df47ccca7665dbbf52dfa51c4811797bc4"
+      },
+      "comments": [],
+      "reviews": []
     }
   ]
 }
